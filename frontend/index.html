@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SyncChat — Dev Frontend</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-0: #0D1117;
+      --bg-1: #161B22;
+      --bg-2: #1C2128;
+      --bg-3: #21262D;
+      --border: #30363D;
+      --accent: #58A6FF;
+      --text-0: #E6EDF3;
+      --text-1: #8B949E;
+      --text-2: #484F58;
+      --success: #3FB950;
+      --error: #F85149;
+      --warning: #E3B341;
+      --sent-bg: #1F6FEB;
+      --recv-bg: #21262D;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg-0);
+      color: var(--text-0);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .hidden { display: none !important; }
+
+    /* ── SETUP SCREEN ─────────────────────────── */
+    #setup {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .setup-card {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 40px;
+      width: 100%;
+      max-width: 440px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+
+    .logo svg { width: 28px; height: 28px; color: var(--accent); }
+    .logo h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+    .logo .badge {
+      font-size: 10px;
+      font-family: 'SF Mono', Consolas, monospace;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      padding: 2px 7px;
+      border-radius: 4px;
+      color: var(--text-1);
+    }
+
+    .field { margin-bottom: 16px; }
+
+    .field label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-1);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .event-tag {
+      font-family: 'SF Mono', Consolas, monospace;
+      font-size: 10px;
+      background: #1F6FEB22;
+      color: var(--accent);
+      border: 1px solid #1F6FEB44;
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    .field-row { display: flex; gap: 8px; }
+
+    .field input {
+      flex: 1;
+      width: 100%;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 9px 12px;
+      color: var(--text-0);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #58A6FF18; }
+    .field input::placeholder { color: var(--text-2); }
+
+    .field .hint {
+      font-size: 11px;
+      font-family: 'SF Mono', Consolas, monospace;
+      color: var(--text-2);
+      margin-top: 4px;
+    }
+
+    .gen-btn {
+      flex-shrink: 0;
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-1);
+      font-size: 11px;
+      font-family: 'SF Mono', Consolas, monospace;
+      padding: 0 12px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+
+    .gen-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+    .setup-error {
+      font-size: 12px;
+      color: var(--error);
+      margin-bottom: 10px;
+      display: none;
+    }
+
+    .join-btn {
+      width: 100%;
+      background: var(--accent);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .join-btn:hover { opacity: 0.85; }
+    .join-btn:active { opacity: 0.7; }
+
+    /* ── CHAT SCREEN ──────────────────────────── */
+    #chat {
+      display: flex;
+      height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 248px;
+      flex-shrink: 0;
+      background: var(--bg-1);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 18px 14px;
+      gap: 14px;
+      overflow: hidden;
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-logo svg { color: var(--accent); width: 20px; height: 20px; }
+    .sidebar-logo span { font-weight: 600; font-size: 14px; }
+
+    .conn-status {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: var(--text-1);
+    }
+
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--error);
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+
+    .dot.on { background: var(--success); box-shadow: 0 0 6px var(--success); }
+
+    .info-block {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 12px;
+    }
+
+    .info-block .lbl {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-1);
+      margin-bottom: 4px;
+    }
+
+    .info-block .val {
+      font-family: 'SF Mono', Consolas, monospace;
+      font-size: 11px;
+      color: var(--text-0);
+      word-break: break-all;
+    }
+
+    .info-block .val.room { color: var(--accent); }
+    .info-block .val.sub { color: var(--text-1); margin-top: 3px; }
+
+    /* Socket event log */
+    .ev-section { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+
+    .ev-section .lbl {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-1);
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+
+    #event-log {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .ev-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-family: 'SF Mono', Consolas, monospace;
+      font-size: 10px;
+      padding: 3px 0;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-2);
+      flex-shrink: 0;
+    }
+
+    .ev-row .ev-arrow-out { color: var(--warning); }
+    .ev-row .ev-arrow-in  { color: var(--success); }
+    .ev-row .ev-name      { color: var(--accent); }
+
+    .leave-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-1);
+      font-size: 12px;
+      padding: 8px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+
+    .leave-btn:hover { border-color: var(--error); color: var(--error); }
+
+    /* Chat main */
+    .chat-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .chat-header {
+      padding: 13px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .chat-header .room-name { font-weight: 600; font-size: 15px; }
+    .chat-header .room-sub {
+      font-size: 11px;
+      font-family: 'SF Mono', Consolas, monospace;
+      color: var(--text-1);
+      margin-top: 1px;
+    }
+
+    .conn-pill {
+      font-size: 11px;
+      font-family: 'SF Mono', Consolas, monospace;
+      padding: 3px 8px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      color: var(--text-1);
+    }
+
+    .conn-pill.live { border-color: #3FB95044; color: var(--success); background: #3FB95011; }
+
+    /* Messages */
+    .messages-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      scroll-behavior: smooth;
+    }
+
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--text-2);
+      font-size: 13px;
+      padding-bottom: 40px;
+    }
+
+    .empty-state svg { width: 36px; height: 36px; opacity: 0.25; }
+
+    .msg-wrap {
+      display: flex;
+      flex-direction: column;
+      max-width: 66%;
+      gap: 2px;
+    }
+
+    .msg-wrap.sent { align-self: flex-end; align-items: flex-end; }
+    .msg-wrap.recv { align-self: flex-start; align-items: flex-start; }
+
+    .bubble {
+      padding: 8px 13px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .msg-wrap.sent .bubble {
+      background: var(--sent-bg);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg-wrap.recv .bubble {
+      background: var(--recv-bg);
+      border: 1px solid var(--border);
+      color: var(--text-0);
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg-meta {
+      font-size: 10px;
+      font-family: 'SF Mono', Consolas, monospace;
+      color: var(--text-2);
+      padding: 0 4px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .msg-status { color: var(--text-2); }
+    .msg-status.ok { color: var(--accent); }
+
+    /* Typing indicator */
+    .typing-bar {
+      height: 28px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: var(--text-1);
+      flex-shrink: 0;
+    }
+
+    .typing-dots { display: flex; gap: 3px; }
+
+    .typing-dots span {
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--text-1);
+      animation: bounce 1.2s ease-in-out infinite;
+    }
+
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
+      30% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .typing-dots span { animation: none; opacity: 1; }
+    }
+
+    /* Compose */
+    .compose {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-1);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .compose input {
+      flex: 1;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text-0);
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .compose input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #58A6FF18; }
+    .compose input::placeholder { color: var(--text-2); }
+
+    .send-btn {
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      width: 42px; height: 42px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: opacity 0.15s;
+    }
+
+    .send-btn:hover { opacity: 0.85; }
+    .send-btn:disabled { opacity: 0.35; cursor: default; }
+    .send-btn svg { width: 18px; height: 18px; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════
+     SETUP SCREEN
+     ════════════════════════════════════════════════════ -->
+<div id="setup">
+  <div class="setup-card">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      <h1>SyncChat</h1>
+      <span class="badge">dev</span>
+    </div>
+
+    <div class="field">
+      <label>Your Name</label>
+      <input id="my-name" type="text" placeholder="e.g. Alice" autocomplete="off" />
+    </div>
+
+    <div class="field">
+      <label>Your User ID <span class="event-tag">senderId</span></label>
+      <div class="field-row">
+        <input id="my-id" type="text" placeholder="MongoDB ObjectId (24-char hex)" autocomplete="off" />
+        <button class="gen-btn" onclick="fillId('my-id')">gen</button>
+      </div>
+      <div class="hint">// Message.senderId — ref: User</div>
+    </div>
+
+    <div class="field">
+      <label>Other User ID <span class="event-tag">receiverId</span></label>
+      <div class="field-row">
+        <input id="other-id" type="text" placeholder="MongoDB ObjectId (24-char hex)" autocomplete="off" />
+        <button class="gen-btn" onclick="fillId('other-id')">gen</button>
+      </div>
+      <div class="hint">// Message.receiverId — ref: User</div>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="field">
+      <label>Room ID <span class="event-tag">join_room</span></label>
+      <div class="field-row">
+        <input id="room-id" type="text" placeholder="e.g. room_alice_bob" autocomplete="off" />
+        <button class="gen-btn" onclick="fillRoom()">gen</button>
+      </div>
+      <div class="hint">// Both users must use the same roomId</div>
+    </div>
+
+    <p class="setup-error" id="setup-error"></p>
+
+    <button class="join-btn" onclick="joinRoom()">Connect &amp; Join Room</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     CHAT SCREEN
+     ════════════════════════════════════════════════════ -->
+<div id="chat" class="hidden">
+
+  <!-- SIDEBAR: connection info + socket event log -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      <span>SyncChat</span>
+    </div>
+
+    <div class="conn-status">
+      <div class="dot" id="conn-dot"></div>
+      <span id="conn-label">Disconnected</span>
+    </div>
+
+    <div class="info-block">
+      <div class="lbl">Room</div>
+      <div class="val room" id="sb-room">—</div>
+    </div>
+
+    <div class="info-block">
+      <div class="lbl">You</div>
+      <div class="val" id="sb-name">—</div>
+      <div class="val sub" id="sb-myid">—</div>
+    </div>
+
+    <div class="info-block">
+      <div class="lbl">Chatting With</div>
+      <div class="val sub" id="sb-otherid">—</div>
+    </div>
+
+    <div class="ev-section">
+      <div class="lbl">Socket Events</div>
+      <div id="event-log"></div>
+    </div>
+
+    <button class="leave-btn" onclick="leaveRoom()">Leave Room</button>
+  </aside>
+
+  <!-- MAIN CHAT AREA -->
+  <main class="chat-main">
+    <div class="chat-header">
+      <div>
+        <div class="room-name" id="hdr-room">—</div>
+        <div class="room-sub">socket.io room</div>
+      </div>
+      <div class="conn-pill" id="conn-pill">○ offline</div>
+    </div>
+
+    <!-- Messages rendered here -->
+    <div class="messages-area" id="messages">
+      <div class="empty-state" id="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>No messages yet — say hello!</span>
+      </div>
+    </div>
+
+    <!-- Typing indicator (shows when receive_message typing event fires) -->
+    <div class="typing-bar" id="typing-bar"></div>
+
+    <!-- Compose: send_message event fires on submit -->
+    <div class="compose">
+      <input
+        id="msg-input"
+        type="text"
+        placeholder="Type a message..."
+        autocomplete="off"
+        onkeydown="handleKeydown(event)"
+        oninput="handleTyping()"
+      />
+      <button class="send-btn" id="send-btn" onclick="sendMessage()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+  </main>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════
+     SOCKET.IO CLIENT
+     Auto-served by your backend at /socket.io/socket.io.js
+     Backend: src/main.ts → new Server(server, { cors: { origin: 'http://localhost:3000' } })
+     ════════════════════════════════════════════════════ -->
+<script src="http://localhost:5000/socket.io/socket.io.js"></script>
+<script>
+  // ─────────────────────────────────────────────────────
+  // STATE
+  // ─────────────────────────────────────────────────────
+  let socket   = null;
+  let myId     = '';
+  let myName   = '';
+  let otherId  = '';
+  let roomId   = '';
+  let typingTimer  = null;
+  let isTyping     = false;
+
+  // ─────────────────────────────────────────────────────
+  // HELPERS
+  // ─────────────────────────────────────────────────────
+
+  // Generates a valid 24-char hex string Mongoose accepts as ObjectId
+  function generateObjectId() {
+    const ts   = Math.floor(Date.now() / 1000).toString(16).padStart(8, '0');
+    const rand = Array.from({ length: 16 }, () =>
+      Math.floor(Math.random() * 16).toString(16)
+    ).join('');
+    return ts + rand;
+  }
+
+  function fillId(inputId) {
+    document.getElementById(inputId).value = generateObjectId();
+  }
+
+  function fillRoom() {
+    document.getElementById('room-id').value =
+      'room_' + Math.random().toString(36).slice(2, 8);
+  }
+
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function formatTime(date) {
+    return new Date(date || Date.now()).toLocaleTimeString('en', {
+      hour: '2-digit', minute: '2-digit', hour12: true
+    });
+  }
+
+  // Logs each socket event to the sidebar panel
+  function logEvent(dir, name) {
+    const log   = document.getElementById('event-log');
+    const entry = document.createElement('div');
+    entry.className = 'ev-row';
+    entry.innerHTML = `
+      <span class="${dir === 'out' ? 'ev-arrow-out' : 'ev-arrow-in'}">
+        ${dir === 'out' ? '▲' : '▼'}
+      </span>
+      <span class="ev-name">${name}</span>
+    `;
+    log.prepend(entry);
+    // Keep the log short
+    while (log.children.length > 25) log.lastChild.remove();
+  }
+
+
+  // ─────────────────────────────────────────────────────
+  // SETUP → JOIN
+  // ─────────────────────────────────────────────────────
+  function joinRoom() {
+    myName  = document.getElementById('my-name').value.trim();
+    myId    = document.getElementById('my-id').value.trim();
+    otherId = document.getElementById('other-id').value.trim();
+    roomId  = document.getElementById('room-id').value.trim();
+
+    if (!myName || !myId || !otherId || !roomId) {
+      const err = document.getElementById('setup-error');
+      err.textContent = 'All fields are required.';
+      err.style.display = 'block';
+      return;
+    }
+
+    // Populate sidebar
+    document.getElementById('sb-room').textContent    = roomId;
+    document.getElementById('sb-name').textContent    = myName;
+    document.getElementById('sb-myid').textContent    = myId.slice(0, 16) + '…';
+    document.getElementById('sb-otherid').textContent = otherId.slice(0, 16) + '…';
+    document.getElementById('hdr-room').textContent   = '#' + roomId;
+
+    document.getElementById('setup').classList.add('hidden');
+    document.getElementById('chat').classList.remove('hidden');
+    document.getElementById('msg-input').focus();
+
+    initSocket();
+  }
+
+
+  // ─────────────────────────────────────────────────────
+  // SOCKET SETUP
+  // Backend: src/main.ts → io.on('connection', (socket) => {...})
+  // ─────────────────────────────────────────────────────
+  function initSocket() {
+    socket = io('http://localhost:5000');
+
+    // ── connect ─────────────────────────────────────
+    // Fires when Socket.IO handshake succeeds
+    socket.on('connect', () => {
+      setConnected(true);
+      logEvent('in', 'connect');
+
+      // ── join_room ──────────────────────────────────
+      // Backend: socket.on('join_room', (roomId) => socket.join(roomId))
+      socket.emit('join_room', roomId);
+      logEvent('out', 'join_room');
+    });
+
+    // ── disconnect ───────────────────────────────────
+    // Backend: socket.on('disconnect', () => console.log(...))
+    socket.on('disconnect', () => {
+      setConnected(false);
+      logEvent('in', 'disconnect');
+    });
+
+    // ── receive_message ──────────────────────────────
+    // Backend: io.to(data.roomId).emit('receive_message', savedMessage)
+    // savedMessage = the full Mongoose document from messagemodel.create(data)
+    // Fields: { _id, senderId, receiverId, message, status, createdAt, updatedAt }
+    socket.on('receive_message', (msg) => {
+      logEvent('in', 'receive_message');
+      renderMessage(msg);
+    });
+
+    // ── typing ───────────────────────────────────────
+    // Backend: socket.to(data.roomId).emit('typing', data)
+    socket.on('typing', (data) => {
+      logEvent('in', 'typing');
+      showTyping(data.name || 'Someone');
+    });
+
+    // ── stopTyping ───────────────────────────────────
+    // Backend: socket.to(data.roomId).emit('stopTyping', data)
+    socket.on('stopTyping', () => {
+      logEvent('in', 'stopTyping');
+      hideTyping();
+    });
+  }
+
+  function setConnected(on) {
+    document.getElementById('conn-dot').classList.toggle('on', on);
+    document.getElementById('conn-label').textContent = on ? 'Connected' : 'Disconnected';
+    const pill = document.getElementById('conn-pill');
+    pill.textContent = on ? '● live' : '○ offline';
+    pill.classList.toggle('live', on);
+  }
+
+
+  // ─────────────────────────────────────────────────────
+  // SEND MESSAGE
+  // Backend: socket.on('send_message', async (data) => {
+  //   const savedMessage = await messagemodel.create(data)
+  //   io.to(data.roomId).emit('receive_message', savedMessage)
+  // })
+  //
+  // Data shape must match Message model:
+  //   senderId   → ObjectId ref User (required)
+  //   receiverId → ObjectId ref User (required)
+  //   message    → String (required)
+  //   roomId     → used for socket routing (not in DB schema)
+  // ─────────────────────────────────────────────────────
+  function sendMessage() {
+    const input = document.getElementById('msg-input');
+    const text  = input.value.trim();
+
+    if (!text || !socket?.connected) return;
+
+    const data = {
+      senderId:   myId,     // → Message.senderId
+      receiverId: otherId,  // → Message.receiverId
+      message:    text,     // → Message.message
+      roomId:     roomId    // → socket room routing (not stored in DB)
+    };
+
+    socket.emit('send_message', data);
+    logEvent('out', 'send_message');
+
+    input.value = '';
+    stopTypingEmit();
+    input.focus();
+  }
+
+  function handleKeydown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+
+  // ─────────────────────────────────────────────────────
+  // TYPING INDICATORS
+  // Backend:
+  //   socket.on('typing',     (data) => socket.to(data.roomId).emit('typing', data))
+  //   socket.on('stopTyping', (data) => socket.to(data.roomId).emit('stopTyping', data))
+  // ─────────────────────────────────────────────────────
+  function handleTyping() {
+    if (!socket?.connected) return;
+
+    if (!isTyping) {
+      isTyping = true;
+      socket.emit('typing', { roomId, name: myName });
+      logEvent('out', 'typing');
+    }
+
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(stopTypingEmit, 1500);
+  }
+
+  function stopTypingEmit() {
+    if (isTyping && socket?.connected) {
+      isTyping = false;
+      socket.emit('stopTyping', { roomId });
+      logEvent('out', 'stopTyping');
+    }
+    clearTimeout(typingTimer);
+  }
+
+  function showTyping(name) {
+    document.getElementById('typing-bar').innerHTML = `
+      <div class="typing-dots"><span></span><span></span><span></span></div>
+      <span>${escapeHtml(name)} is typing</span>
+    `;
+  }
+
+  function hideTyping() {
+    document.getElementById('typing-bar').innerHTML = '';
+  }
+
+
+  // ─────────────────────────────────────────────────────
+  // RENDER MESSAGE
+  // msg = saved MongoDB document from receive_message event
+  // Fields: _id, senderId, receiverId, message, status, createdAt, updatedAt
+  // ─────────────────────────────────────────────────────
+  function renderMessage(msg) {
+    const area  = document.getElementById('messages');
+    const empty = document.getElementById('empty-state');
+    if (empty) empty.remove();
+
+    const isSent = String(msg.senderId) === myId;
+    const wrap   = document.createElement('div');
+    wrap.className = `msg-wrap ${isSent ? 'sent' : 'recv'}`;
+
+    const status = isSent
+      ? `<span class="msg-status ok">${msg.status || 'sent'}</span>`
+      : '';
+
+    wrap.innerHTML = `
+      <div class="bubble">${escapeHtml(msg.message)}</div>
+      <div class="msg-meta">
+        ${formatTime(msg.createdAt)}
+        ${status}
+      </div>
+    `;
+
+    area.appendChild(wrap);
+    area.scrollTop = area.scrollHeight;
+  }
+
+
+  // ─────────────────────────────────────────────────────
+  // LEAVE ROOM
+  // ─────────────────────────────────────────────────────
+  function leaveRoom() {
+    stopTypingEmit();
+    if (socket) { socket.disconnect(); socket = null; }
+
+    document.getElementById('messages').innerHTML = `
+      <div class="empty-state" id="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>No messages yet — say hello!</span>
+      </div>
+    `;
+    document.getElementById('event-log').innerHTML = '';
+    document.getElementById('typing-bar').innerHTML = '';
+    document.getElementById('chat').classList.add('hidden');
+    document.getElementById('setup').classList.remove('hidden');
+  }
+</script>
+</body>
+</html>
